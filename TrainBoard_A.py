@@ -55,8 +55,8 @@ while True:
 #            print('    IN 1 off')
             relayCmd |= 0b00000001
             bus.write_byte(busAddress, relayCmd)
-            blueLED.off()
-        
+            blueLED.on()
+
         if in2.is_pressed:
 #            print('IN 2 ON')
             relayCmd &= 0b11111101
@@ -66,7 +66,7 @@ while True:
 #            print('    IN 2 off')
             relayCmd |= 0b00000010
             bus.write_byte(busAddress, relayCmd)
-            greenLED.off()
+            greenLED.on()
 
         if in3.is_pressed:
 #            print('IN 3 ON')
@@ -77,7 +77,7 @@ while True:
             print('    IN 3 off')
             relayCmd |= 0b00000100
             bus.write_byte(busAddress, relayCmd)
-			redLED.on()
+            redLED.on()
 
         if in4.is_pressed:
             print('IN 4 ON')
@@ -108,7 +108,7 @@ while True:
 
         time.sleep(1)
         print('')
-    
+
     except KeyboardInterrupt as ki:
         bus.write_byte(busAddress, 0xFF)
         print('-------')
