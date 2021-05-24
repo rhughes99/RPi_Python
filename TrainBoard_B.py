@@ -109,7 +109,7 @@ while True:
 #            relayCmd |= 0b00100000
 #            bus.write_byte(busAddress, relayCmd)
 
-        time.sleep(0.5)
+        time.sleep(1)
         print('')
 
     except KeyboardInterrupt as ki:
