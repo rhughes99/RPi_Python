@@ -11,10 +11,10 @@ blueLED  = gpiozero.LED(4)
 greenLED = gpiozero.LED(17)
 redLED   = gpiozero.LED(18)
 
-# RENAME: UNLOAD UNCOUPLE SWITCH
-in1 = gpiozero.Button(19)
-in2 = gpiozero.Button(16)
-in3 = gpiozero.Button(13)
+# RENAME:  UNCOUPLE SWITCH
+UncoupleButton = gpiozero.Button(19)
+UnloadButton   = gpiozero.Button(16)
+Switch         = gpiozero.Button(13)
 
 # Not connected
 in4 = gpiozero.Button(12)
@@ -49,35 +49,35 @@ redLED.on()
 while True:
     try:
         # Active input = 0, not pressed
-        if in1.is_pressed:
-            print('IN 1 ON')
+        if UncoupleButton.is_pressed:
+            print('UNCOUPLE pressed')
             relayCmd &= 0b11111110
             bus.write_byte(busAddress, relayCmd)
             blueLED.off()
         else:
-            print('    IN 1 off')
+#            print('    UNCOUPLE released')
             relayCmd |= 0b00000001
             bus.write_byte(busAddress, relayCmd)
             blueLED.on()
 
-        if in2.is_pressed:
-            print('IN 2 ON')
+        if UnloadButton.is_pressed:
+            print('UNLOAD pressed')
             relayCmd &= 0b11111101
             bus.write_byte(busAddress, relayCmd)
             greenLED.off()
         else:
-            print('    IN 2 off')
+#            print('    UNLOAD released')
             relayCmd |= 0b00000010
             bus.write_byte(busAddress, relayCmd)
             greenLED.on()
 
-        if in3.is_pressed:
-            print('IN 3 ON')
+        if Switch.is_pressed:
+            print('Switch Out')
             relayCmd &= 0b11111011
             bus.write_byte(busAddress, relayCmd)
             redLED.off()
         else:
-            print('    IN 3 off')
+            print('Switch In')
             relayCmd |= 0b00000100
             bus.write_byte(busAddress, relayCmd)
             redLED.on()
