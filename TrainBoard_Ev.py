@@ -55,11 +55,13 @@ previousUnload = 0
 # Need to handle Switch differently because of two stable states
 if Switch.is_pressed:
     relayCmd &= 0b11111011
+    relayCmd |= 0b00001000
     bus.write_byte(busAddress, relayCmd)
     redLED.off()
     previousSwitch = 1
 else:
     relayCmd |= 0b00000100
+    relayCmd &= 0b11110111
     bus.write_byte(busAddress, relayCmd)
     redLED.on()
     previousSwitch = 0
@@ -100,19 +102,19 @@ while True:
                 station = 0
 
             bus.write_byte(busAddress, relayCmd)
- 
+
         elif not(UnloadButton.is_pressed) and previousUnload == 1:
             previousUnload = 0
 
 
         if Switch.is_pressed and previousSwitch == 0:
-#            print('Switch Out')
+#            print('Switch out: Red')
             relayCmd &= 0b11111011
             relayCmd |= 0b00001000
             bus.write_byte(busAddress, relayCmd)
             redLED.off()
             previousSwitch = 1
-        
+
         elif not(Switch.is_pressed) and previousSwitch == 1:
             relayCmd |= 0b00000100
             relayCmd &= 0b11110111
