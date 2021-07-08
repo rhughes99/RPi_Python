@@ -4,8 +4,25 @@
 # For Everett
 
 import time
+import random
 import smbus
 import gpiozero
+
+def playWithLights():
+    dice = random.randint(1, 6)
+    print(dice)
+
+    for x in range(dice):
+        rCmd = 0b11111111
+        bus.write_byte(busAddress, rCmd)
+        time.sleep(1)
+
+        rCmd = 0b11110000
+        bus.write_byte(busAddress, rCmd)
+        time.sleep(1)
+
+    bus.write_byte(busAddress, relayCmd)
+
 
 blueLED  = gpiozero.LED(4)
 greenLED = gpiozero.LED(17)
@@ -68,6 +85,7 @@ else:
 
 garage = 0
 station = 0
+lightCnt = 0
 
 while True:
     try:
@@ -121,6 +139,11 @@ while True:
             bus.write_byte(busAddress, relayCmd)
             redLED.on()
             previousSwitch = 0
+
+        lightCnt = lightCnt + 1
+        if lightCnt == 300:
+            lightCnt = 0
+            playWithLights()
 
         time.sleep(0.20)
 
