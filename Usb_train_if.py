@@ -53,35 +53,35 @@ device = None
 device = usb.core.find(idVendor=VENDOR_ID, idProduct=PRODUCT_ID)
 
 # if OS kernel already claimed device
-if device.is_kernel_driver_active(0) is True:
-    # tell kernel to detach
-    device.detach_kernel_driver(0)
-    was_kernel_driver_active = True
+#if device.is_kernel_driver_active(0) is True:
+#    # tell kernel to detach
+#    device.detach_kernel_driver(0)
+#    was_kernel_driver_active = True
 
 if device is None:
     raise ValueError('Device not found. Please ensure it is connected.')
     sys.exit(1)
 
-device.reset()
+#device.reset()
 
 # Set active configuration. With no arguments, first configuration will be active one
-device.set_configuration()
+#device.set_configuration()
 
 # Claim interface 0
-usb.util.claim_interface(device, 0)
+#usb.util.claim_interface(device, 0)
 
 
 
+# bmRequestType =	USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
+reqType = 0xF0
+bReq = 0xF0			# SetIoPortsConfig
+wVal = 0			# unused
+wIndex = 0			# unused
+# wLength	 = 4;						// 32bit int
+# pData    = &portBits;
 
-
-	req.bmRequestType =	USBmakebmRequestType(kUSBOut, kUSBVendor, kUSBDevice);
-	req.bRequest = 0xF0;					// SetIoPortsConfig
-	req.wValue   = 0;						// unused
-	req.wIndex   = 0;						// unused
-	req.wLength	 = 4;						// 32bit int
-	req.pData    = &portBits;
-
-device.ctrl_transfer(reqType, bReq, wVal, wIndex, data)
+#device.ctrl_transfer(reqType, bReq, wVal, wIndex, data)
+device.ctrl_transfer(reqType, bReq, wVal, wIndex, 0x0FFF)
 
 
 
