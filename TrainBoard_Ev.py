@@ -10,7 +10,7 @@ import gpiozero
 
 def playWithLights():
     dice = random.randint(1, 6)
-    print(dice)
+    print("Dice = %d" % dice)
 
     for x in range(dice):
         rCmd = 0b11111111
