@@ -34,21 +34,21 @@ def DS2482_deviceReset():
     bus.write_byte(tempSenseAddr, 0xF0)
     status = bus.read_byte(tempSenseAddr)
     print('[DS2482_deviceReset] status = %d' % status)
-    
-	if status & 0xF7 == DS2482_STATUS_RST:	# RST = 1 after executing Device Reset
-		return True
-	else:
-		print('*** Error in DS2482_deviceReset: incorrect read back of status');
-		return False
+
+    if status & 0xF7 == DS2482_STATUS_RST:	# RST = 1 after executing Device Reset
+        return True
+    else:
+        print('*** Error in DS2482_deviceReset: incorrect read back of status');
+        return False
 
 def DS2482_writeConfiguration(config):
-	print('DS2482_writeConfiguration()')
-	WaitForOWBusAvailable()
-	
+    print('DS2482_writeConfiguration()')
+    WaitForOWBusAvailable()
+
 
 def WaitForOWBusAvailable():
-	print('WaitForOWBusAvailable()')
-	
+    print('WaitForOWBusAvailable()')
+
 
 
 # GPIO assignments
