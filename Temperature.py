@@ -52,10 +52,10 @@ def DS2482_deviceReset():
 	# Status Bits Affected: RST = 1; 1WB = PPD = SD = SBR = TSB = DIR = 0
 	# Configuration Bits Affected: 1WS = APU = SPU = 0
 	# Returns True if device reset, False if problem or no device
- 
+
     bus.write_byte(tempSenseAddr, 0xF0)
     status = bus.read_byte(tempSenseAddr)
-    print('[DS2482_deviceReset] status = %b' % bin(status))
+    print('[DS2482_deviceReset] status = {}' .format(bin(status)))
 
     if status & 0xF7 == DS2482_STATUS_RST:	# RST = 1 after executing Device Reset
         return True
@@ -72,16 +72,16 @@ def DS2482_writeConfiguration(config):
 	# Configuration Bits Affected: 1WS, SPU & APU updated
 	# Returns True if success, False if problem
 
-    print('DS2482_writeConfiguration()')
-    WaitForOWBusAvailable()
+	print('DS2482_writeConfiguration()')
+	WaitForOWBusAvailable()
 	bus.write_i2c_block(tempSenseAddr, 0xD2, config)
 	status = bus.read_byte(tempSenseAddr)
-    print('[DS2482_writeConfiguration] status = %b' % bin(status))
+	print('[DS2482_writeConfiguration] status = %b' % bin(status))
 
 	if status == config:
 		return True
 	else:
-        print('*** Error in DS2482_writeConfiguration: incorrect read back of config');
+		print('*** Error in DS2482_writeConfiguration: incorrect read back of config');
 		return False
 
 
@@ -89,8 +89,8 @@ def WaitForOWBusAvailable():
 	# Reads DS2482 Status Register and returns when 1-Wire bus is not busy
 	# or if cycle count exceeds threshold
 
-    print('WaitForOWBusAvailable()')
-    cycles = 0
+	print('WaitForOWBusAvailable()')
+	cycles = 0
 	stillWaiting = True
 	DS2482_setReadPointer(DS2482_STATUS_REG)
 	while stillWaiting:
@@ -115,7 +115,7 @@ def DS2482_owReset():
 	# Returns True if no issue, False if problem or no device
 
 	WaitForOWBusAvailable()
-	
+
 	bus.write_byte(tempSenseAddr, 0xB4)
 	# Loop while checking 1WB for completion of 1-Wire operation
 	# Don't use waitForOWBusAvailable here because we want to
@@ -127,13 +127,13 @@ def DS2482_owReset():
 			stillWaiting = True
 		else:
 			stillWaiting = False
-		
+
 		if data & DS2482_STATUS_SD:
 			print('*** DS2482_owReset: 1-Wire short detected')
-		
-		if !(data & DS2482_STATUS_PPD):
+
+		if data & DS2482_STATUS_PPD == 0:
 			print('*** DS2482_owReset: 1-Wire presence pulse not detected')
-		
+
 		return True
 
 
@@ -213,15 +213,15 @@ i2cOK = DS2482_owReset()
 
 
 while True:
-    try:
+	try:
 
 
 
 
-        time.sleep(2.0)
+		time.sleep(2.0)
 
-    except KeyboardInterrupt as ki:
-	    bus.write_byte(relayBdAddr, 0x00)
-        print('-------')
-        print('Exiting...')
-        break
+	except KeyboardInterrupt as ki:
+		bus.write_byte(relayBdAddr, 0x00)
+		print('-------')
+		print('Exiting...')
+		break
