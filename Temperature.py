@@ -43,8 +43,9 @@ romCode = [ [0x5F,0x00,0x00,0x03,0xAA,0x86,0x52,0x28],
 			[0x16,0x00,0x00,0x03,0xAA,0xAA,0x6E,0x28], 
 			[0x77,0x00,0x00,0x03,0xAA,0x72,0xEB,0x28],
 			[0xBC,0x00,0x00,0x04,0x3E,0xFF,0xC1,0x28] ]
+crc8 = 0;
 
-
+#----------------------------------------------
 def DS2482_deviceReset():
 	# Performs global reset of device state machine; terminates any ongoing 1-Wire communication
 	# Restriction: None
@@ -53,17 +54,27 @@ def DS2482_deviceReset():
 	# Configuration Bits Affected: 1WS = APU = SPU = 0
 	# Returns True if device reset, False if problem or no device
 
-    bus.write_byte(tempSenseAddr, 0xF0)
-    status = bus.read_byte(tempSenseAddr)
-    print('[DS2482_deviceReset] status = {}' .format(bin(status)))
+	bus.write_byte(tempSenseAddr, 0xF0)
+	status = bus.read_byte(tempSenseAddr)
+	print('[DS2482_deviceReset] status = {}' .format(bin(status)))
 
-    if status & 0xF7 == DS2482_STATUS_RST:	# RST = 1 after executing Device Reset
-        return True
-    else:
-        print('*** Error in DS2482_deviceReset: incorrect read back of status');
-        return False
+	if status & 0xF7 == DS2482_STATUS_RST:	# RST = 1 after executing Device Reset
+		return True
+	else:
+		print('*** Error in DS2482_deviceReset: incorrect read back of status')
+		return False
 
+#----------------------------------------------
+def DS2482_setReadPointer(ptrCode):
+	# Sets read pointer to specified register
+	# Restriction: None
+	# Read Pointer Position: As specified by ptrCode
+	# Status Bits Affected: None
+	# Configuration Bits Affected: None
 
+	bus.write_i2c_block(tempSenseAddr, 0xE1, ptrCode)
+
+#----------------------------------------------
 def DS2482_writeConfiguration(config):
 	# Writes new configuration, settings take effect immediately
 	# Restriction: 1-Wire activity must have ended (1WB = 0)
@@ -72,7 +83,7 @@ def DS2482_writeConfiguration(config):
 	# Configuration Bits Affected: 1WS, SPU & APU updated
 	# Returns True if success, False if problem
 
-	print('DS2482_writeConfiguration()')
+#	print('DS2482_writeConfiguration()')
 	WaitForOWBusAvailable()
 	bus.write_i2c_block(tempSenseAddr, 0xD2, config)
 	status = bus.read_byte(tempSenseAddr)
@@ -81,31 +92,10 @@ def DS2482_writeConfiguration(config):
 	if status == config:
 		return True
 	else:
-		print('*** Error in DS2482_writeConfiguration: incorrect read back of config');
+		print('*** Error in DS2482_writeConfiguration: incorrect read back of config')
 		return False
 
-
-def WaitForOWBusAvailable():
-	# Reads DS2482 Status Register and returns when 1-Wire bus is not busy
-	# or if cycle count exceeds threshold
-
-	print('WaitForOWBusAvailable()')
-	cycles = 0
-	stillWaiting = True
-	DS2482_setReadPointer(DS2482_STATUS_REG)
-	while stillWaiting:
-#		data = DS2482_STATUS_1WB;	# set 1WBusy to busy
-		data = bus.read_byte(tempSenseAddr)
-		if data & DS2482_STATUS_1WB:
-			stillWaiting = True
-		else:
-			stillWaiting = False
-
-		cycles = cycles + 1
-		if cycles > 10:
-			print('*** WaitForOWBusAvailable(): cycles > 10')
-			stillWaiting = False
-
+#----------------------------------------------
 def DS2482_owReset():
 	# Generates 1-Wire reset/presence-detect cycle
 	# Restriction: 1-Wire activity must have ended (1WB = 0)
@@ -136,9 +126,237 @@ def DS2482_owReset():
 
 		return True
 
+#----------------------------------------------
+def DS2482_owWriteByte(data):
+	# Writes single byte to 1-Wire line
+	# Restriction: 1-Wire activity must have ended (1WB = 0)
+	# Read Pointer Position: Status Register
+	# Status Bits Affected: 1WB (set to 1 for 8 x tSLOT)
+	# Configuration Bits Affected: 1WS, APU, SPU
+ 
+ 	WaitForOWBusAvailable()
+ 	bus.write_i2c_block(tempSenseAddr, 0xA5, data)
+
+#----------------------------------------------
+def DS2482_owReadByte():
+	# Generates eight read-data time slots on 1-Wire line
+	# Restriction: 1-Wire activity must have ended (1WB = 0)
+	# Read Pointer Position: Status Register
+	#	Note: To read data byte received from 1-Wire line, issue
+	#	Set Read Pointer command and select the Read Data Register.
+	#	Then access DS2482-100 in read mode.
+	# Status Bits Affected: 1WB (set to 1 for 8 x tSLOT)
+	# Configuration Bits Affected: 1WS, APU
+
+	WaitForOWBusAvailable()
+	bus.write_byte(tempSenseAddr, 0x96)		# 1-Wire Read Byte
+
+#----------------------------------------------
+def DS2482_readStatusRegister():
+	# Reads DS2482 Status Register and reports results
+	# Assumes we are already pointing at Status Register
+
+	status = bus.read_byte(tempSenseAddr)
+	print('---------- Status ----------')
+	if status & DS2482_STATUS_1WB == 1:
+		print('1WB = 1: 1-Wire is busy')
+	else:
+		print('1WB = 0: 1-Wire is not busy')
+	
+	if status & DS2482_STATUS_PPD == 1:
+		print('PPD = 1: Presence pulse detected')
+	else:
+		print('PPD = 0: Presence pulse not detected')
+	
+	if status & DS2482_STATUS_SD == 1:
+		print('SD = 1: Short detected')
+	else:
+		print('SD = 0: Short not detected')
+	
+	if status & DS2482_STATUS_LL == 1:
+		print('LL = 1')
+	else:
+		print('LL = 0')
+	
+	if status & DS2482_STATUS_RST == 1:
+		print('RST = 1: DS2482 has performed internal reset cycle')
+	else:
+		status('RST = 0: Write Configuration command executed')
+	
+	if status & DS2482_STATUS_SBR == 1:
+		print('SBR (Single Bit Result) = 1')
+	else:
+		print('SBR (Single Bit Result) = 0')
+	
+	if status & DS2482_STATUS_TSB == 1:
+		print('TSB (Triple Second Bit) = 1')
+	else:
+		print('TSB (Triple Second Bit) = 0')
+	
+	if status & DS2482_STATUS_DIR == 1:
+		print('DIR (Branch Direction Taken) = 1')
+	else:
+		print('DIR (Branch Direction Taken) = 0')
+
+#----------------------------------------------
+def WaitForOWBusAvailable():
+	# Reads DS2482 Status Register and returns when 1-Wire bus is not busy
+	# or if cycle count exceeds threshold
+
+	print('WaitForOWBusAvailable()')
+	cycles = 0
+	stillWaiting = True
+	DS2482_setReadPointer(DS2482_STATUS_REG)
+	while stillWaiting:
+#		data = DS2482_STATUS_1WB	# set 1WBusy to busy
+		data = bus.read_byte(tempSenseAddr)
+		if data & DS2482_STATUS_1WB:
+			stillWaiting = True
+		else:
+			stillWaiting = False
+
+		cycles = cycles + 1
+		if cycles > 10:
+			print('*** WaitForOWBusAvailable(): cycles > 10')
+			stillWaiting = False
+
+#----------------------------------------------
+def DS18B20_initiateReadTemperature():
+	# Initiates temperature conversion for all sensors
+	#  Send 1-Wire Reset
+	#  Send Skip ROM command (address all 1-Wire devices)
+	#  Send Convert T command
+	#  Sleep for temperature conversion period
+
+	DS2482_owReset()
+	
+	# Send DS18B20 Skip ROM command
+	DS2482_owWriteByte(0xCC)
+
+	# Send DS18B20 Convert T command
+	DS2482_owWriteByte(0x44)
+
+	# Capture and display conversion time
+	# TIME STUFF
+
+	# Wait for temperature conversion (750 ms for 12 bits)
+	time.sleep(0.750)
+	DS18B20_finishReadTemperature()
+
+#----------------------------------------------
+def DS18B20_finishReadTemperature():
+	# Individually reads temperature from each connected sensor
+	#  Send 1-Wire Reset
+	#  Send Match ROM command
+	#  Send Read Scratchpad command
+	#  Repeat 9 times
+	#    Repeat 8 times
+	#    Send 1-Wire Read Byte command
+	#    Set DS2482 read pointer to Data Register
+	#    Read byte from DS2482
+	#  Convert data to temperature
+
+	for sensor in range(NUM_TEMP_SENSORS):
+
+		scratchPad.clear()
+
+		# All DS18B20 transctons start with initialization (reset OW bus)
+		DS2482_owReset()
+
+		# Send DS18B20 Match ROM command
+		DS2482_owWriteByte(0x55)		# DS18B20 Match ROM
+
+		# Send 8 bytes of ROM code
+		for i in range(8)
+			DS2482_owWriteByte(romCode[sensor][i])
+
+		# Send DS18B20 Read Scratchpad command
+		DS2482_owWriteByte(0xBE)		# DS18B20 Read Scratchpad
+
+		crc8 = 0
+		# Read 9 bytes of scratchPad
+		for i in range(9)
+			DS2482_owReadByte()
+
+			# Set read pointer
+			DS2482_setReadPointer(DS2482_READ_DATA_REG)
+
+			# Read byte from DS2482
+			data = bus.read_byte(tempSenseAddr)
+
+			scratchPad.append(data)
+
+			# crc8 is running crc calculation result
+			crc8 = computeCRC(data)
+
+		# Validate scratchPad data checksum
+		if crc8 == 0
+			# Convert scratchpad bytes 0 (LSB) & 1 (MSB) to temperature
+			temperatureDegC = (scratchPad[0] / 16.0) + (scratchPad[1] & 0x07) * 16.0
+			if (scratchPad[1] & 0x08)		# temperature <0 deg C
+				temperatureDegC = temperatureDegC - 128.0
+
+			temperatureDegF[sampleIdx][sensor] = 9.0 / 5.0 * temperatureDegC + 32.0
+			message = f"DS18B20_finishReadTemperature: sensor {sensor}: temperatureDegF= {temperatureDegF[sampleIdx][sensor]}"
+			print(message)
+			#print('DS18B20_finishReadTemperature: sensor %d: temperatureDegF = %.1f", sensor, temperatureDegF[sampleIdx][sensor]);
+
+			printTemperature(sensor, temperatureDegF)
+
+		# Time tag stuff
+		# Write data to file stuff
+
+#----------------------------------------------
+def computeCRC(inByte):
+	crcTable = [0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
+				157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
+				35, 125, 159, 193, 66, 28, 254, 160, 225, 191, 93, 3, 128, 222, 60, 98,
+				190, 224, 2, 92, 223, 129, 99, 61, 124, 34, 192, 158, 29, 67, 161, 255,
+				70, 24, 250, 164, 39, 121, 155, 197, 132, 218, 56, 102, 229, 187, 89, 7,
+				219, 133, 103, 57, 186, 228, 6, 88, 25, 71, 165, 251, 120, 38, 196, 154,
+				101, 59, 217, 135, 4, 90, 184, 230, 167, 249, 27, 69, 198, 152, 122, 36,
+				248, 166, 68, 26, 153, 199, 37, 123, 58, 100, 134, 216, 91, 5, 231, 185,
+				140, 210, 48, 110, 237, 179, 81, 15, 78, 16, 242, 172, 47, 113, 147, 205,
+				17, 79, 173, 243, 112, 46, 204, 146, 211, 141, 111, 49, 178, 236, 14, 80,
+				175, 241, 19, 77, 206, 144, 114, 44, 109, 51, 209, 143, 12, 82, 176, 238,
+				50, 108, 142, 208, 83, 13, 239, 177, 240, 174, 76, 18, 145, 207, 45, 115,
+				202, 148, 118, 40, 171, 245, 23, 73, 8, 86, 180, 234, 105, 55, 213, 139,
+				87, 9, 235, 181, 54, 104, 138, 212, 149, 203, 41, 119, 244, 170, 72, 22,
+				233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151, 201, 74, 20, 246, 168,
+				116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53}
+
+	return crcTable[crc8 ^ inByte]
+
+#----------------------------------------------
+def printTemperature(sensor, temperature):
+	if sensor == 0:
+		message = f"Ambient: {temperature} degF"
+
+	elif sensor == 1:
+		message = f"Main Return: {temperature} degF"
+
+	elif sensor == 2:
+		message = f"Library Return: {temperature} degF"
+
+	elif sensor == 3:
+		message = f"Main Supply: {temperature} degF"
+
+	elif sensor == 4:
+		message = f"H20 Heater Input: {temperature} degF"
+
+	elif sensor == 5:
+		message = f"H20 Heater Output: {temperature} degF"
+
+	elif sensor == 6:
+		message = f"Outside: {temperature} degF"
+
+	else:
+		message = f"*** printTemperature(): Unexpected sensor {sensor}"
+
+	print(message)
 
 
-
+#----------------------------------------------
 # GPIO assignments
 # LEDs use negative logic, 0 = ON
 blueLED  = gpiozero.LED(4)
@@ -184,9 +402,8 @@ time.sleep(2)
 redLED.on()
 
 
-print('-----------------------------------')
-print('Number of sensors: %d', NUM_TEMP_SENSORS)
-
+print('===================================')
+print('Number of sensors:', NUM_TEMP_SENSORS)
 
 
 i2cOK = DS2482_deviceReset()
@@ -208,17 +425,13 @@ print('Reset OW bus')
 i2cOK = DS2482_owReset()
 
 
-
-
-
-
 while True:
 	try:
+		for i in range(10):
+			print('-----------------------------------')
+			DS18B20_initiateReadTemperature()
 
-
-
-
-		time.sleep(2.0)
+		time.sleep(5.0)
 
 	except KeyboardInterrupt as ki:
 		bus.write_byte(relayBdAddr, 0x00)
