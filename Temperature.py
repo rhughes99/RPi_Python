@@ -5,10 +5,10 @@
 #  DS2482-100 1-Wire Master
 
 import time
+from datetime import datetime
 #import random
 import smbus
 import gpiozero
-
 
 # Pseudo Constants
 NUM_TEMP_SENSORS = 7		# number of 1-Wire sensors
@@ -236,14 +236,16 @@ def DS18B20_initiateReadTemperature():
 	DS2482_owWriteByte(0x44)
 
 	# Capture and display conversion time
-	# TIME STUFF
+	now = datetime.now()
+	timeStamp = now.strftime('%d/%m/%Y %H:%M:%S')
+#	print('timeStamp =', timeStamp)
 
 	# Wait for temperature conversion (750 ms for 12 bits)
 	time.sleep(0.750)
-	DS18B20_finishReadTemperature()
+	DS18B20_finishReadTemperature(timeStamp)
 
 #----------------------------------------------
-def DS18B20_finishReadTemperature():
+def DS18B20_finishReadTemperature(time):
 	# Individually reads temperature from each connected sensor
 	#  Send 1-Wire Reset
 	#  Send Match ROM command
@@ -256,7 +258,10 @@ def DS18B20_finishReadTemperature():
 	#  Convert data to temperature
 
 #	print('in DS18B20_finishReadTemperature')
+	print(f' >>> {time} <<<')
 	scratchPad = []
+	printLine = [time, '\t']
+
 	for sensor in range(NUM_TEMP_SENSORS):
 		# All DS18B20 transctons start with initialization (reset OW bus)
 		DS2482_owReset()
@@ -297,23 +302,20 @@ def DS18B20_finishReadTemperature():
 			if scratchPad[1] & 0x08:		# temperature <0 deg C
 				temperatureDegC = temperatureDegC - 128.0
 
-#			temperatureDegF[sampleIdx][sensor] = 9.0 / 5.0 * temperatureDegC + 32.0
-#			message = f"DS18B20_finishReadTemperature: sensor {sensor}: temperatureDegF= {temperatureDegF[sampleIdx][sensor]}"
-#			print(message)
-#			print('DS18B20_finishReadTemperature: sensor %d: temperatureDegF = %.1f", sensor, temperatureDegF[sampleIdx][sensor]);
-
-#			printTemperature(sensor, temperatureDegF)
-
-			tempF = 9.0 / 5.0 * temperatureDegC + 32.0
-#			print('tempF = ',tempF)
+			tempF = (9.0 / 5.0 * temperatureDegC) + 32.0
 			printTemperature(sensor, tempF)
+
+			printLine.append(str(round(tempF,2)))
+			printLine.append('\t')
 
 		else:
 			print('*** Bad checksum')
 			print(f'scratchPad: {scratchPad}')
+			printLine.append('-99\t')
 
-		# Time tag stuff
-		# Write data to file stuff
+	# Write data to file stuff
+	fileObj.writelines(printLine)
+	fileObj.write('\n')
 
 #----------------------------------------------
 def computeCRC(crc8, inByte):
@@ -435,6 +437,8 @@ i2cOK = DS2482_owReset()
 if i2cOK:
 	print('OW reset OK')
 
+	fileObj = open('TemperatureLog.txt', 'w')
+
 	i = 0
 	while True:
 		try:
@@ -445,7 +449,7 @@ if i2cOK:
 			redLED.on()
 			blueLED.off()
 			i = i+1
-			time.sleep(5.0)
+			time.sleep(9.0)
 
 		except KeyboardInterrupt as ki:
 			bus.write_byte(relayBdAddr, 0xFF)
@@ -457,3 +461,6 @@ if i2cOK:
 			break
 else:
 	print('Mission failure...')
+
+fileObj.close()
+
