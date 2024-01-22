@@ -6,9 +6,11 @@
 
 import time
 from datetime import datetime
-#import random
 import smbus
 import gpiozero
+
+# Modifications & Improvements?
+#
 
 # Pseudo Constants
 NUM_TEMP_SENSORS = 7		# number of 1-Wire sensors
@@ -43,6 +45,8 @@ romCode = [ [0x28,0x52,0x86,0xAA,0x03,0x00,0x00,0x5F],
 			[0x28,0x6E,0xAA,0xAA,0x03,0x00,0x00,0x16],
 			[0x28,0xEB,0x72,0xAA,0x03,0x00,0x00,0x77],
 			[0x28,0xC1,0xFF,0x3E,0x04,0x00,0x00,0xBC] ]
+
+numRetries  = 0
 
 #----------------------------------------------
 def DS2482_deviceReset():
@@ -245,7 +249,7 @@ def DS18B20_initiateReadTemperature():
 	DS18B20_finishReadTemperature(timeStamp)
 
 #----------------------------------------------
-def DS18B20_finishReadTemperature(time):
+def DS18B20_finishReadTemperature(t):
 	# Individually reads temperature from each connected sensor
 	#  Send 1-Wire Reset
 	#  Send Match ROM command
@@ -256,13 +260,16 @@ def DS18B20_finishReadTemperature(time):
 	#    Set DS2482 read pointer to Data Register
 	#    Read byte from DS2482
 	#  Convert data to temperature
+	global numRetries
 
 #	print('in DS18B20_finishReadTemperature')
-	print(f' >>> {time} <<<')
+	print(f' >>> {t} <<<')
 	scratchPad = []
-	printLine = [time, '\t']
+	printLine = [t, '\t']
 
-	for sensor in range(NUM_TEMP_SENSORS):
+	sensor = 0
+#	for sensor in range(NUM_TEMP_SENSORS):
+	while sensor < NUM_TEMP_SENSORS:
 		# All DS18B20 transctons start with initialization (reset OW bus)
 		DS2482_owReset()
 
@@ -304,16 +311,19 @@ def DS18B20_finishReadTemperature(time):
 
 			tempF = (9.0 / 5.0 * temperatureDegC) + 32.0
 			printTemperature(sensor, tempF)
+			sensor = sensor+1
 
 			printLine.append(str(round(tempF,2)))
 			printLine.append('\t')
 
 		else:
-			print('*** Bad checksum')
-			print(f'scratchPad: {scratchPad}')
-			printLine.append('-99\t')
+			numRetries = numRetries+1
+			print('*** Bad checksum - retrying')
+#			print(f'scratchPad: {scratchPad}')
+#			printLine.append('-99\t')
+			time.sleep(0.100)
 
-	# Write data to file stuff
+	# Write line of data to file
 	fileObj.writelines(printLine)
 	fileObj.write('\n')
 
@@ -366,7 +376,6 @@ def printTemperature(sensor, temperature):
 
 	print(message)
 
-
 #----------------------------------------------
 # GPIO assignments
 # LEDs use negative logic, 0 = ON
@@ -416,7 +425,6 @@ redLED.on()
 print('===================================')
 print('Number of sensors:', NUM_TEMP_SENSORS)
 
-
 i2cOK = DS2482_deviceReset()
 if i2cOK:
 	print('DS2482 reset OK')
@@ -432,24 +440,25 @@ else:
 	print('Active pullup disabled')
 
 # Reset OW bus
-#print('Reset OW bus')
 i2cOK = DS2482_owReset()
 if i2cOK:
 	print('OW reset OK')
 
 	fileObj = open('TemperatureLog.txt', 'w')
 
-	i = 0
+	i = 1
 	while True:
 		try:
 			blueLED.on()
 			redLED.off()
-			print('-----------------------------------',i)
+			successRate = round( (((i*NUM_TEMP_SENSORS) / (i*NUM_TEMP_SENSORS+numRetries)) * 100), 1)
+			print(f'----------------------------------- {i}  {successRate}%')
 			DS18B20_initiateReadTemperature()
 			redLED.on()
 			blueLED.off()
 			i = i+1
-			time.sleep(9.0)
+#			time.sleep(9.0)
+			time.sleep(59.0)
 
 		except KeyboardInterrupt as ki:
 			bus.write_byte(relayBdAddr, 0xFF)
