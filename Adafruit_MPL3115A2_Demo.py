@@ -26,7 +26,9 @@ sensor.sealevel_pressure = 102250
 # Main loop to read the sensor values and print them every second.
 while True:
     pressure = sensor.pressure
+    pressureINHG = pressure / 3386
     print('Pressure: {0:0.3f} pascals'.format(pressure))
+    print('   {0:0.1f} inHg'.format(pressureINHG))
     altitude = sensor.altitude
     print('Altitude: {0:0.1f} meters'.format(altitude))
     temperature = sensor.temperature
