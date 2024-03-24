@@ -15,6 +15,7 @@ import gpiozero
 import board
 import busio
 import adafruit_mpl3115a2
+from adafruit_ht16k33 import segments
 
 # Modifications & Improvements?
 #
@@ -54,6 +55,8 @@ romCode = [ [0x28,0x52,0x86,0xAA,0x03,0x00,0x00,0x5F],
 			[0x28,0xC1,0xFF,0x3E,0x04,0x00,0x00,0xBC] ]
 
 numRetries  = 0
+printLine = []
+SCREEN_PRINT = 1	# 1 = print sensor data to screen
 
 #----------------------------------------------
 def DS2482_deviceReset():
@@ -268,6 +271,8 @@ def DS18B20_finishReadTemperature(t):
 	#    Read byte from DS2482
 	#  Convert data to temperature
 	global numRetries
+	global printLine
+	printLine.clear
 
 #	print('in DS18B20_finishReadTemperature')
 	print(f' >>> {t} <<<')
@@ -310,14 +315,14 @@ def DS18B20_finishReadTemperature(t):
 
 		# Validate scratchPad data checksum
 		if crc8 == 0:
-			# Convert scratchpad bytes 0 (LSB) & 1 (MSB) to temperature
-#			print(f'    scratchPad: {scratchPad}')
+			# Convert scratchpad bytes 0 (LSB) & 1 (MSB) to temperatur
 			temperatureDegC = (scratchPad[0] / 16.0) + (scratchPad[1] & 0x07) * 16.0
 			if scratchPad[1] & 0x08:		# temperature <0 deg C
 				temperatureDegC = temperatureDegC - 128.0
 
 			tempF = (9.0 / 5.0 * temperatureDegC) + 32.0
-			printTemperature(sensor, tempF)
+			if SCREEN_PRINT:
+				printTemperature(sensor, tempF)
 			sensor = sensor+1
 
 			printLine.append(str(round(tempF,2)))
@@ -330,9 +335,6 @@ def DS18B20_finishReadTemperature(t):
 #			printLine.append('-99\t')
 			time.sleep(0.100)
 
-	# Write line of data to file
-	fileObj.writelines(printLine)
-	fileObj.write('\n')
 
 #----------------------------------------------
 def computeCRC(crc8, inByte):
@@ -428,8 +430,10 @@ print('         Red')
 time.sleep(1)
 redLED.on()
 
-# Initialize MPL3115A2
-baroSensor = adafruit_mpl3115a2.MPL3115A2(bus)
+# Initialize MPL3115A2 & 7-seg display
+i2c = busio.I2C(board.SCL, board.SDA)
+baroSensor = adafruit_mpl3115a2.MPL3115A2(i2c)
+display = segments.Seg7x4(i2c)
 
 print('===================================')
 print('Number of sensors:', NUM_TEMP_SENSORS)
@@ -465,12 +469,20 @@ if i2cOK:
 			DS18B20_initiateReadTemperature()
 			redLED.on()
 			blueLED.off()
-			
-			pressure = (sensor.pressure) / 3386
-			print('Pressure: {0:0.1f} inHg'.format(pressureINHG))
-			
+
+			pressure = (baroSensor.pressure) / 3386.389 + 0.52
+			if SCREEN_PRINT:
+				print('Pressure: {0:0.1f} inHg'.format(pressure))
+			printLine.append(str(round(pressure,2)))
+
+			# Write line of data to fiile
+			fileObj.writelines(printLine)
+			fileObj.write('\n')
+
+			display.fill(0)
+			display.print(i)
 			i = i+1
-#			time.sleep(9.0)
+#			time.sleep(4.0)
 			time.sleep(59.0)
 
 		except KeyboardInterrupt as ki:

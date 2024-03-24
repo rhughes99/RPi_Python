@@ -33,41 +33,41 @@ while True:
 			bus.write_byte_data(DEVICE0, GPIOB, 0)
 			bus.write_byte_data(DEVICE1, GPIOA, 0)
 			bus.write_byte_data(DEVICE1, GPIOB, 0)
-		
+
 		elif value <= 0x008000:
-			shiftedValue = value << 8
+			shiftedValue = value >> 8
 			bus.write_byte_data(DEVICE0, GPIOA, 0)
 			bus.write_byte_data(DEVICE0, GPIOB, shiftedValue)
 			bus.write_byte_data(DEVICE1, GPIOA, 0)
 			bus.write_byte_data(DEVICE1, GPIOB, 0)
-		
+
 		elif value <= 0x800000:
-			shiftedValue = value << 16
+			shiftedValue = value >> 16
 			bus.write_byte_data(DEVICE0, GPIOA, 0)
 			bus.write_byte_data(DEVICE0, GPIOB, 0)
 			bus.write_byte_data(DEVICE1, GPIOA, shiftedValue)
 			bus.write_byte_data(DEVICE1, GPIOB, 0)
 
-		else
-			shiftedValue = value << 24
+		else:
+			shiftedValue = value >> 24
 			bus.write_byte_data(DEVICE0, GPIOA, 0)
 			bus.write_byte_data(DEVICE0, GPIOB, 0)
 			bus.write_byte_data(DEVICE1, GPIOA, 0)
 			bus.write_byte_data(DEVICE1, GPIOB, shiftedValue)
 
-		print('shiftedValue' = {}' .format(bin(shiftedValue)))
+#		print('value =', bin(value))
 
 		value = value << 1
-		if value = 0x10000000:
+		if value == 0x1000000:
 			value = 1
-		
+
 		time.sleep(1.0)
 
-    except KeyboardInterrupt as ki:
+	except KeyboardInterrupt as ki:
 		bus.write_byte_data(DEVICE0, GPIOA, 0)
 		bus.write_byte_data(DEVICE0, GPIOB, 0)
 		bus.write_byte_data(DEVICE1, GPIOA, 0)
 		bus.write_byte_data(DEVICE1, GPIOB, 0)
 
-        print('Exiting...')
-        break
+		print('Exiting...')
+		break
