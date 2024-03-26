@@ -1,7 +1,10 @@
 # LightArrayTest
 #  Test routine for Uncle Jim's light array
 #  22 lights, numbered 21 - 0, from right to left
-# 
+#   Lights 15:0 are 'standard' white [16]
+#   Light 16 is 'standard' red [1]
+#   Lights 18:17 are 'standard' white, 'standard' spares? [2]
+#   Lights 21:19 are 'high voltage' white, will appear dim [3]
 
 import smbus
 import time
@@ -27,28 +30,32 @@ shiftedValue = 0
 
 while True:
 	try:
+		# Lights 7:0
 		if value <= 0x000080:
 			shiftedValue = value
 			bus.write_byte_data(DEVICE0, GPIOA, shiftedValue)
 			bus.write_byte_data(DEVICE0, GPIOB, 0)
 			bus.write_byte_data(DEVICE1, GPIOA, 0)
-			bus.write_byte_data(DEVICE1, GPIOB, 0)
+#			bus.write_byte_data(DEVICE1, GPIOB, 0)
 
+		# Lights 15:8
 		elif value <= 0x008000:
 			shiftedValue = value >> 8
 			bus.write_byte_data(DEVICE0, GPIOA, 0)
 			bus.write_byte_data(DEVICE0, GPIOB, shiftedValue)
 			bus.write_byte_data(DEVICE1, GPIOA, 0)
-			bus.write_byte_data(DEVICE1, GPIOB, 0)
+#			bus.write_byte_data(DEVICE1, GPIOB, 0)
 
+		# Lights 21:16
 		elif value <= 0x800000:
 			shiftedValue = value >> 16
 			bus.write_byte_data(DEVICE0, GPIOA, 0)
 			bus.write_byte_data(DEVICE0, GPIOB, 0)
 			bus.write_byte_data(DEVICE1, GPIOA, shiftedValue)
-			bus.write_byte_data(DEVICE1, GPIOB, 0)
+#			bus.write_byte_data(DEVICE1, GPIOB, 0)
 
 		else:
+			print('Should not be here')
 			shiftedValue = value >> 24
 			bus.write_byte_data(DEVICE0, GPIOA, 0)
 			bus.write_byte_data(DEVICE0, GPIOB, 0)
@@ -58,16 +65,17 @@ while True:
 #		print('value =', bin(value))
 
 		value = value << 1
-		if value == 0x1000000:
+		if value == 0x20000:
 			value = 1
+#			print('Recycle...')
 
-		time.sleep(1.0)
+		time.sleep(0.5)
 
 	except KeyboardInterrupt as ki:
 		bus.write_byte_data(DEVICE0, GPIOA, 0)
 		bus.write_byte_data(DEVICE0, GPIOB, 0)
 		bus.write_byte_data(DEVICE1, GPIOA, 0)
-		bus.write_byte_data(DEVICE1, GPIOB, 0)
+#		bus.write_byte_data(DEVICE1, GPIOB, 0)
 
 		print('Exiting...')
 		break
