@@ -5,9 +5,15 @@
 #  and smbus (I2C) for sensor input
 #  DS2482-100 1-Wire Master
 #
-# Reads MPL3115A2 for barometric pressure
+# This routine assume the 1-Wire module is connected
+#  and doesn't check
+#
+# Other I2C devices may be connected and so are checked:
+#  MPL3115A2 for barometric pressure + 4-digit display
+#  Uncle Jim's light array
 
-import time
+#import time
+from time import sleep
 from datetime import datetime
 import smbus
 import gpiozero
@@ -17,7 +23,7 @@ import busio
 import adafruit_mpl3115a2
 from adafruit_ht16k33 import segments
 
-# Modifications & Improvements?
+# Potential Modifications & Improvements?
 #
 
 # Pseudo Constants
@@ -56,7 +62,9 @@ romCode = [ [0x28,0x52,0x86,0xAA,0x03,0x00,0x00,0x5F],
 
 numRetries  = 0
 printLine = []
-SCREEN_PRINT = 1	# 1 = print sensor data to screen
+SCREEN_PRINT = 1		# 1 = print sensor data to screen
+BARO_MOD_PRESENT = 1	# 1 = connected, baro pressure + display
+LIGHT_BAR_PRESENT = 1	# 1 = connected, 16 lights
 
 #----------------------------------------------
 def DS2482_deviceReset():
@@ -124,7 +132,7 @@ def DS2482_owReset():
 	WaitForOWBusAvailable()
 
 	bus.write_byte(tempSenseAddr, 0xB4)
-	time.sleep(0.002)
+	sleep(0.002)
 
 	data = bus.read_byte(tempSenseAddr)
 	if data & DS2482_STATUS_SD:
@@ -255,7 +263,7 @@ def DS18B20_initiateReadTemperature():
 #	print('timeStamp =', timeStamp)
 
 	# Wait for temperature conversion (750 ms for 12 bits)
-	time.sleep(0.750)
+	sleep(0.750)
 	DS18B20_finishReadTemperature(timeStamp)
 
 #----------------------------------------------
@@ -333,7 +341,7 @@ def DS18B20_finishReadTemperature(t):
 			print('*** Bad checksum - retrying')
 #			print(f'scratchPad: {scratchPad}')
 #			printLine.append('-99\t')
-			time.sleep(0.100)
+			sleep(0.100)
 
 
 #----------------------------------------------
@@ -385,14 +393,14 @@ def printTemperature(sensor, temperature):
 
 	print(message)
 
-#----------------------------------------------
+#==============================================
 # GPIO assignments
 # LEDs use negative logic, 0 = ON
 blueLED  = gpiozero.LED(4)
 greenLED = gpiozero.LED(17)
 redLED   = gpiozero.LED(18)
 
-# Not connected
+# GPIO not connected
 in1 = gpiozero.Button(19)
 in2 = gpiozero.Button(16)
 in3 = gpiozero.Button(13)
@@ -405,6 +413,14 @@ bus = smbus.SMBus(1)
 tempSenseAddr = 0x18
 relayBdAddr   = 0x27
 
+# Light Bar constants
+LIGHT_BLK0    = 0x21
+LIGHT_BLK1    = 0x22
+IODIRA        = 0x00
+IODIRB        = 0x01
+GPIOA         = 0x12
+GPIOB         = 0x13
+
 # Turn all relays  off
 bus.write_byte(relayBdAddr, 0xFF)
 
@@ -412,28 +428,47 @@ bus.write_byte(relayBdAddr, 0xFF)
 blueLED.on()
 greenLED.on()
 redLED.on()
-time.sleep(1)
 
+# Initialize MPL3115A2 & 7-seg display
+try:
+	i2c = busio.I2C(board.SCL, board.SDA)
+	baroSensor = adafruit_mpl3115a2.MPL3115A2(i2c)
+	display = segments.Seg7x4(i2c)
+except:
+	BARO_MOD_PRESENT = 0
+	print('*** Barometer module not connected!')
+
+# Initialize Light Bar
+try:
+	bus.write_byte_data(LIGHT_BLK0, IODIRA, 0x00)
+	bus.write_byte_data(LIGHT_BLK0, IODIRB, 0x00)
+	bus.write_byte_data(LIGHT_BLK1, IODIRA, 0x00)
+	bus.write_byte_data(LIGHT_BLK1, IODIRB, 0x00)
+
+	bus.write_byte_data(LIGHT_BLK0, GPIOA, 0)
+	bus.write_byte_data(LIGHT_BLK0, GPIOB, 0)
+	bus.write_byte_data(LIGHT_BLK1, GPIOA, 0)
+	bus.write_byte_data(LIGHT_BLK1, GPIOB, 0)
+except:
+	LIGHT_BAR_PRESENT = 0
+	print('*** Light Bar not connected!')
+
+sleep(1)
 # Cycle LEDs for fun
 blueLED.off()
 print('Blue')
-time.sleep(1)
+sleep(1)
 blueLED.on()
 
 greenLED.off()
 print('    Green')
-time.sleep(1)
+sleep(1)
 greenLED.on()
 
 redLED.off()
 print('         Red')
-time.sleep(1)
+sleep(1)
 redLED.on()
-
-# Initialize MPL3115A2 & 7-seg display
-i2c = busio.I2C(board.SCL, board.SDA)
-baroSensor = adafruit_mpl3115a2.MPL3115A2(i2c)
-display = segments.Seg7x4(i2c)
 
 print('===================================')
 print('Number of sensors:', NUM_TEMP_SENSORS)
@@ -470,20 +505,28 @@ if i2cOK:
 			redLED.on()
 			blueLED.off()
 
-			pressure = (baroSensor.pressure) / 3386.389 + 0.52
-			if SCREEN_PRINT:
-				print('Pressure: {0:0.1f} inHg'.format(pressure))
-			printLine.append(str(round(pressure,2)))
+			if BARO_MOD_PRESENT:
+				pressure = (baroSensor.pressure) / 3386.389 + 0.52
+				if SCREEN_PRINT:
+					print('Pressure: {0:0.2f} inHg'.format(pressure))
+				printLine.append(str(round(pressure,2)))
 
 			# Write line of data to fiile
 			fileObj.writelines(printLine)
 			fileObj.write('\n')
 
-			display.fill(0)
-			display.print(i)
+			# 4-digit display on barometer module
+			if BARO_MOD_PRESENT:
+				display.fill(0)
+#				display.print(i)
+				display.print(str(round(pressure,2)))
+
+			if LIGHT_BAR_PRESENT:
+				bus.write_byte_data(LIGHT_BLK0, GPIOA, i)
+
 			i = i+1
-#			time.sleep(4.0)
-			time.sleep(59.0)
+			sleep(4.0)
+#			sleep(59.0)
 
 		except KeyboardInterrupt as ki:
 			bus.write_byte(relayBdAddr, 0xFF)
@@ -497,4 +540,3 @@ else:
 	print('Mission failure...')
 
 fileObj.close()
-

@@ -8,6 +8,7 @@
 
 import smbus
 import time
+import random
 
 bus = smbus.SMBus(1)
 
@@ -69,7 +70,12 @@ while True:
 			value = 1
 #			print('Recycle...')
 
-		time.sleep(0.5)
+		# Random patterns for lights 15:00
+		#  Simulating 1950's computer display
+		bus.write_byte_data(DEVICE0, GPIOA, random.randint(0,255))
+		bus.write_byte_data(DEVICE0, GPIOB, random.randint(0,255))
+
+		time.sleep(1.0)
 
 	except KeyboardInterrupt as ki:
 		bus.write_byte_data(DEVICE0, GPIOA, 0)
