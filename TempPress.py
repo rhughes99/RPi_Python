@@ -26,6 +26,9 @@ from adafruit_ht16k33 import segments
 # Potential Modifications & Improvements?
 #
 
+# Num ticks (secs) between data collections
+DATA_TICK = 5
+
 # Pseudo Constants
 NUM_TEMP_SENSORS = 7		# number of 1-Wire sensors
 
@@ -495,38 +498,45 @@ if i2cOK:
 	fileObj = open('TemperatureLog.txt', 'w')
 
 	i = 1
+	tick = 0
 	while True:
 		try:
-			blueLED.on()
-			redLED.off()
-			successRate = round( (((i*NUM_TEMP_SENSORS) / (i*NUM_TEMP_SENSORS+numRetries)) * 100), 1)
-			print(f'----------------------------------- {i}  {successRate}%')
-			DS18B20_initiateReadTemperature()
-			redLED.on()
-			blueLED.off()
-
-			if BARO_MOD_PRESENT:
-				pressure = (baroSensor.pressure) / 3386.389 + 0.52
-				if SCREEN_PRINT:
-					print('Pressure: {0:0.2f} inHg'.format(pressure))
-				printLine.append(str(round(pressure,2)))
-
-			# Write line of data to fiile
-			fileObj.writelines(printLine)
-			fileObj.write('\n')
-
-			# 4-digit display on barometer module
-			if BARO_MOD_PRESENT:
-				display.fill(0)
-#				display.print(i)
-				display.print(str(round(pressure,2)))
-
+			sleep(1.0)
+			
+			# Do something with light bar every tick 
 			if LIGHT_BAR_PRESENT:
 				bus.write_byte_data(LIGHT_BLK0, GPIOA, i)
+				bus.write_byte_data(LIGHT_BLK1, GPIOB, random.randint(0,255))
 
-			i = i+1
-			sleep(4.0)
-#			sleep(59.0)
+
+			tick = tick+1
+			if tick = DATA_TICK:
+				blueLED.on()
+				redLED.off()
+				successRate = round( (((i*NUM_TEMP_SENSORS) / (i*NUM_TEMP_SENSORS+numRetries)) * 100), 1)
+				print(f'----------------------------------- {i}  {successRate}%')
+				DS18B20_initiateReadTemperature()
+				redLED.on()
+				blueLED.off()
+
+				if BARO_MOD_PRESENT:
+					pressure = (baroSensor.pressure) / 3386.389 + 0.52
+					if SCREEN_PRINT:
+						print('Pressure: {0:0.2f} inHg'.format(pressure))
+					printLine.append(str(round(pressure,2)))
+
+				# Write line of data to fiile
+				fileObj.writelines(printLine)
+				fileObj.write('\n')
+
+				# 4-digit display on barometer module
+				if BARO_MOD_PRESENT:
+					display.fill(0)
+#					display.print(i)
+					display.print(str(round(pressure,2)))
+
+				i = i+1
+				tick = 0
 
 		except KeyboardInterrupt as ki:
 			bus.write_byte(relayBdAddr, 0xFF)
