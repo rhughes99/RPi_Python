@@ -15,6 +15,7 @@
 #import time
 from time import sleep
 from datetime import datetime
+import random
 import smbus
 import gpiozero
 
@@ -27,7 +28,7 @@ from adafruit_ht16k33 import segments
 #
 
 # Num ticks (secs) between data collections
-DATA_TICK = 5
+DATA_TICK = 60
 
 # Pseudo Constants
 NUM_TEMP_SENSORS = 7		# number of 1-Wire sensors
@@ -498,19 +499,19 @@ if i2cOK:
 	fileObj = open('TemperatureLog.txt', 'w')
 
 	i = 1
-	tick = 0
+	tick = 1
 	while True:
 		try:
 			sleep(1.0)
-			
-			# Do something with light bar every tick 
+
+			# Do something with light bar every tick
 			if LIGHT_BAR_PRESENT:
 				bus.write_byte_data(LIGHT_BLK0, GPIOA, i)
-				bus.write_byte_data(LIGHT_BLK1, GPIOB, random.randint(0,255))
+				bus.write_byte_data(LIGHT_BLK0, GPIOB, random.randint(0,255))
 
 
 			tick = tick+1
-			if tick = DATA_TICK:
+			if tick == DATA_TICK:
 				blueLED.on()
 				redLED.off()
 				successRate = round( (((i*NUM_TEMP_SENSORS) / (i*NUM_TEMP_SENSORS+numRetries)) * 100), 1)
@@ -536,7 +537,7 @@ if i2cOK:
 					display.print(str(round(pressure,2)))
 
 				i = i+1
-				tick = 0
+				tick = 1
 
 		except KeyboardInterrupt as ki:
 			bus.write_byte(relayBdAddr, 0xFF)
