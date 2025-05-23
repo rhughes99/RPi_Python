@@ -405,12 +405,12 @@ greenLED = gpiozero.LED(17)
 redLED   = gpiozero.LED(18)
 
 # GPIO not connected
-in1 = gpiozero.Button(19)
-in2 = gpiozero.Button(16)
-in3 = gpiozero.Button(13)
-in4 = gpiozero.Button(12)
-in5 = gpiozero.Button(6)
-in6 = gpiozero.Button(5)
+#in1 = gpiozero.Button(19)
+#in2 = gpiozero.Button(16)
+#in3 = gpiozero.Button(13)
+#in4 = gpiozero.Button(12)
+#in5 = gpiozero.Button(6)
+#in6 = gpiozero.Button(5)
 
 # SMBus (I2C) setup
 bus = smbus.SMBus(1)
